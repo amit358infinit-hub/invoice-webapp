@@ -5,8 +5,9 @@ import os, csv, json
 from datetime import datetime
 import inflect
 from docxtpl import DocxTemplate
+from fpdf import FPDF
 
-# ====== Configuration (आपके पुराने कोड जैसा ही) ======
+# ====== Configuration ======
 TEMPLATE_FILE = "invoice.docx"
 OUTPUT_FILE = "latest_invoice.docx"
 HISTORY_FILE = "invoice_history.csv"
@@ -16,7 +17,8 @@ RATE = 950.00
 SGST_RATE = 0.09
 CGST_RATE = 0.09
 
-# ====== Helper Functions (पुराने कोड से उठाए गए) ======
+
+# ====== Helper Functions ======
 def indian_format(n):
     s, *d = str(f"{n:.2f}").partition(".")
     if len(s) > 3:
@@ -27,10 +29,12 @@ def indian_format(n):
             i -= 2
     return s + "".join(d)
 
+
 def number_to_words(n):
     p = inflect.engine()
     words = p.number_to_words(n, andword="").title().replace("-", " ")
     return f"Rupees {words} Only"
+
 
 def get_next_invoice_no(current_inv):
     if not current_inv:
@@ -43,6 +47,7 @@ def get_next_invoice_no(current_inv):
         pass
     return current_inv
 
+
 def load_state():
     if os.path.exists(STATE_FILE):
         try:
@@ -53,9 +58,11 @@ def load_state():
             return "LSG/2526/0"
     return "LSG/2526/0"
 
+
 def save_state(last_inv):
     with open(STATE_FILE, 'w') as f:
         json.dump({"last_invoice": last_inv}, f)
+
 
 def save_to_history(data_dict):
     file_exists = os.path.isfile(HISTORY_FILE)
@@ -72,8 +79,10 @@ def save_to_history(data_dict):
             data_dict['rounded']
         ])
 
+
 # ====== Flask App ======
 app = Flask(__name__)
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -121,15 +130,14 @@ def index():
                 if not os.path.exists(TEMPLATE_FILE):
                     error = f"Template फाइल '{TEMPLATE_FILE}' नहीं मिली।"
                 else:
-                    # Word इनवॉइस बनाएं
+                    # Render invoice
                     doc = DocxTemplate(TEMPLATE_FILE)
                     doc.render(context)
-                    # ===== Append logic =====
-                    # ===== Append all invoices into one Word file =====
+
+                    # Append to single Word file
                     if os.path.exists(OUTPUT_FILE):
                         master = Document_compose(OUTPUT_FILE)
                         composer = Composer(master)
-
                         master.add_page_break()
 
                         temp_file = "temp_invoice.docx"
@@ -138,12 +146,10 @@ def index():
                         new_doc = Document_compose(temp_file)
                         composer.append(new_doc)
                         composer.save(OUTPUT_FILE)
-
                         os.remove(temp_file)
                     else:
                         doc.save(OUTPUT_FILE)
 
-                    # हिस्ट्री और स्टेट सेव
                     save_to_history(context)
                     save_state(invoice_no)
 
@@ -152,7 +158,6 @@ def index():
                         "amount": context['amount'],
                         "total": context['rounded']
                     }
-
 
     return render_template(
         "index.html",
@@ -163,58 +168,55 @@ def index():
         preview=preview
     )
 
+
+# -------- Download Word --------
 @app.route("/download")
 def download():
     if os.path.exists(OUTPUT_FILE):
         return send_file(OUTPUT_FILE, as_attachment=True)
     return "पहले कोई इनवॉइस जनरेट करें।"
 
-if __name__ == "__main__":
-    import os
 
-port = int(os.environ.get("PORT", 5000))
-
-app.run(host="0.0.0.0", port=port)
-
-from fpdf import FPDF
-
-@app.route("/make_pdf", methods=["GET","POST"])
+# -------- PDF Generator --------
+@app.route("/make_pdf", methods=["GET", "POST"])
 def make_pdf():
     invoices = []
 
-    # CSV से पूरा डेटा पढ़ो
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, newline='', encoding="utf-8") as f:
             reader = list(csv.reader(f))
-            invoices = reader[1:]  # header छोड़कर
+            invoices = reader[1:]
 
     if request.method == "POST":
         count = int(request.form.get("count"))
-
         selected = invoices[-count:]
 
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
         pdf.set_font("Arial", size=12)
 
         for inv in selected:
-            pdf.add_page()
             pdf.multi_cell(0, 10,
                 f"Date: {inv[0]}\n"
                 f"Invoice No: {inv[1]}\n"
                 f"Truck No: {inv[2]}\n"
                 f"Qty: {inv[3]}\n"
                 f"Amount: {inv[4]}\n"
-                f"Total: {inv[5]}"
+                f"Total: {inv[5]}\n\n"
             )
 
         pdf_file = "selected_invoices.pdf"
         pdf.output(pdf_file)
-
         return send_file(pdf_file, as_attachment=True)
 
     return render_template("make_pdf.html", total=len(invoices))
 
+
+# -------- App Run --------
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
 
 
