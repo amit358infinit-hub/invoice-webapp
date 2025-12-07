@@ -125,33 +125,34 @@ def index():
                     doc = DocxTemplate(TEMPLATE_FILE)
                     doc.render(context)
                     # ===== Append logic =====
-if os.path.exists(OUTPUT_FILE):
-    master = Document_compose(OUTPUT_FILE)
-    composer = Composer(master)
+                    # ===== Append all invoices into one Word file =====
+                    if os.path.exists(OUTPUT_FILE):
+                        master = Document_compose(OUTPUT_FILE)
+                        composer = Composer(master)
 
-    master.add_page_break()
+                        master.add_page_break()
 
-    temp_file = "temp_invoice.docx"
-    doc.save(temp_file)
+                        temp_file = "temp_invoice.docx"
+                        doc.save(temp_file)
 
-    new_doc = Document_compose(temp_file)
-    composer.append(new_doc)
-    composer.save(OUTPUT_FILE)
+                        new_doc = Document_compose(temp_file)
+                        composer.append(new_doc)
+                        composer.save(OUTPUT_FILE)
 
-    os.remove(temp_file)
-else:
-    doc.save(OUTPUT_FILE)
+                        os.remove(temp_file)
+                    else:
+                        doc.save(OUTPUT_FILE)
 
+                    # हिस्ट्री और स्टेट सेव
+                    save_to_history(context)
+                    save_state(invoice_no)
 
-                # हिस्ट्री और स्टेट सेव
-                save_to_history(context)
-                save_state(invoice_no)
-
-                success = f"Invoice {invoice_no} सफलतापूर्वक बन गई।"
-                preview = {
-                     "amount": context['amount'],
-                     "total": context['rounded']
+                    success = f"Invoice {invoice_no} सफलतापूर्वक बन गई।"
+                    preview = {
+                        "amount": context['amount'],
+                        "total": context['rounded']
                     }
+
 
     return render_template(
         "index.html",
@@ -213,6 +214,7 @@ def make_pdf():
         return send_file(pdf_file, as_attachment=True)
 
     return render_template("make_pdf.html", total=len(invoices))
+
 
 
 
