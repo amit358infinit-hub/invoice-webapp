@@ -143,14 +143,14 @@ else:
     doc.save(OUTPUT_FILE)
 
 
-                    # हिस्ट्री और स्टेट सेव
-                    save_to_history(context)
-                    save_state(invoice_no)
+                # हिस्ट्री और स्टेट सेव
+                save_to_history(context)
+                save_state(invoice_no)
 
-                    success = f"Invoice {invoice_no} सफलतापूर्वक बन गई।"
-                    preview = {
-                        "amount": context['amount'],
-                        "total": context['rounded']
+                success = f"Invoice {invoice_no} सफलतापूर्वक बन गई।"
+                preview = {
+                     "amount": context['amount'],
+                     "total": context['rounded']
                     }
 
     return render_template(
@@ -213,6 +213,7 @@ def make_pdf():
         return send_file(pdf_file, as_attachment=True)
 
     return render_template("make_pdf.html", total=len(invoices))
+
 
 
 
