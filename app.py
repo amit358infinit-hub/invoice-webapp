@@ -175,5 +175,44 @@ port = int(os.environ.get("PORT", 5000))
 
 app.run(host="0.0.0.0", port=port)
 
+from fpdf import FPDF
+
+@app.route("/make_pdf", methods=["GET","POST"])
+def make_pdf():
+    invoices = []
+
+    # CSV से पूरा डेटा पढ़ो
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, newline='', encoding="utf-8") as f:
+            reader = list(csv.reader(f))
+            invoices = reader[1:]  # header छोड़कर
+
+    if request.method == "POST":
+        count = int(request.form.get("count"))
+
+        selected = invoices[-count:]
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_font("Arial", size=12)
+
+        for inv in selected:
+            pdf.add_page()
+            pdf.multi_cell(0, 10,
+                f"Date: {inv[0]}\n"
+                f"Invoice No: {inv[1]}\n"
+                f"Truck No: {inv[2]}\n"
+                f"Qty: {inv[3]}\n"
+                f"Amount: {inv[4]}\n"
+                f"Total: {inv[5]}"
+            )
+
+        pdf_file = "selected_invoices.pdf"
+        pdf.output(pdf_file)
+
+        return send_file(pdf_file, as_attachment=True)
+
+    return render_template("make_pdf.html", total=len(invoices))
+
 
 
