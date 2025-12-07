@@ -3,4 +3,6 @@ docxtpl
 python-docx
 inflect
 docxcompose
+fpdf
+
 
