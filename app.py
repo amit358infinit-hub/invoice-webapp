@@ -1,3 +1,5 @@
+from docxcompose.composer import Composer
+from docx import Document as Document_compose
 from flask import Flask, render_template, request, send_file
 import os, csv, json
 from datetime import datetime
@@ -122,7 +124,24 @@ def index():
                     # Word इनवॉइस बनाएं
                     doc = DocxTemplate(TEMPLATE_FILE)
                     doc.render(context)
-                    doc.save(OUTPUT_FILE)
+                    # ===== Append logic =====
+if os.path.exists(OUTPUT_FILE):
+    master = Document_compose(OUTPUT_FILE)
+    composer = Composer(master)
+
+    master.add_page_break()
+
+    temp_file = "temp_invoice.docx"
+    doc.save(temp_file)
+
+    new_doc = Document_compose(temp_file)
+    composer.append(new_doc)
+    composer.save(OUTPUT_FILE)
+
+    os.remove(temp_file)
+else:
+    doc.save(OUTPUT_FILE)
+
 
                     # हिस्ट्री और स्टेट सेव
                     save_to_history(context)
@@ -155,5 +174,6 @@ if __name__ == "__main__":
 port = int(os.environ.get("PORT", 5000))
 
 app.run(host="0.0.0.0", port=port)
+
 
 
